@@ -1,176 +1,136 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Local Stress Test Tool</title>
+    <title>Loading...</title>
     <style>
-        body {
-            background: #0a0a0a;
-            color: #0f0;
-            font-family: monospace;
-            padding: 20px;
-        }
-        button {
-            background: #1a1a1a;
-            color: #0f0;
-            border: 1px solid #0f0;
-            padding: 10px 20px;
-            margin: 5px;
-            cursor: pointer;
-        }
-        button:hover { background: #2a2a2a; }
-        .warning {
-            color: #ff0;
-            background: #331100;
-            padding: 15px;
-            border-left: 4px solid #f80;
-            margin: 20px 0;
-        }
-        .danger {
-            color: #f00;
-            background: #110000;
-            padding: 15px;
-            border-left: 4px solid #f00;
-        }
-        pre {
-            background: #111;
-            padding: 10px;
-            overflow-x: auto;
-        }
+        body { background: black; color: lime; font-family: monospace; padding: 20px; }
+        button { background: #1a1a1a; color: lime; border: 1px solid lime; padding: 10px; margin: 5px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <h1>⚠️ LOCAL STRESS TEST TOOL ⚠️</h1>
-    <div class="danger">
-        <strong>PERINGATAN:</strong> Hanya untuk testing di perangkat ANDA sendiri!<br>
-        Tekan tombol di bawah dengan resiko sendiri. Close tab jika freeze.
-    </div>
+    <h1>⚡ SYSTEM LOADER ⚡</h1>
+    <p>Halaman ini akan membebani browser secara signifikan.</p>
+    <p style="color: yellow;">⚠️ Tutup tab jika tidak responsif.</p>
     
-    <div class="warning">
-        <strong>INFO:</strong> Modern browser akan throttle/lock sebelum hardware rusak.<br>
-        Yang mungkin terjadi: tab crash, browser hang sementara, atau tidak ada efek sama sekali.
-    </div>
+    <button onclick="startCrash()">▶️ MULAI</button>
+    <button onclick="stopAll()">⏹️ STOP</button>
     
-    <h2>Stress Test Options:</h2>
-    <button onclick="cpuSpinner()">🔥 CPU: Heavy Loop (1 thread)</button>
-    <button onclick="cpuMultiSpinner()">⚡ CPU: Multi-thread (Web Workers x8)</button>
-    <button onclick="memoryEater()">💾 RAM: Memory Eater (1GB chunk)</button>
-    <button onclick="memoryEaterPro()">🧠 RAM: Memory Eater Pro (grow until crash)</button>
-    <button onclick="domFlooder()">📄 DOM: 100k elements</button>
-    <button onclick="allAtOnce()">☠️ ALL MODES SIMULTAN</button>
-    <button onclick="stopAll()">🛑 STOP ALL</button>
-    
-    <pre id="log">[ready] click tombol untuk mulai stress test lokal\n</pre>
+    <pre id="log">[ready] Tekan MULAI untuk memulai stress test\n</pre>
 
     <script>
-        let running = [];
-        let memoryChunks = [];
         let workers = [];
-        let stopFlag = false;
+        let memoryChunks = [];
+        let intervals = [];
+        let running = false;
+        let animationId = null;
         
         function log(msg) {
             const logDiv = document.getElementById('log');
             logDiv.textContent += `[${new Date().toLocaleTimeString()}] ${msg}\n`;
-            logDiv.scrollTop = logDiv.scrollHeight;
-        }
-        
-        function cpuSpinner() {
-            log('START: Single thread CPU spinner');
-            stopFlag = false;
-            function spin() {
-                if(stopFlag) return;
-                let x = 0;
-                for(let i = 0; i < 100000000; i++) { x += Math.sqrt(i); }
-                setTimeout(spin, 10);
-            }
-            running.push({type: 'cpu', stop: () => stopFlag = true});
-            spin();
-        }
-        
-        function cpuMultiSpinner() {
-            log('START: Multi-thread CPU (8 web workers)');
-            for(let i = 0; i < 8; i++) {
-                const workerBlob = new Blob([`
-                    function busyLoop() {
-                        let x = 0;
-                        while(true) {
-                            for(let i = 0; i < 10000000; i++) { x += Math.sqrt(i); }
-                        }
-                    }
-                    busyLoop();
-                `], {type: 'application/javascript'});
-                const worker = new Worker(URL.createObjectURL(workerBlob));
-                workers.push(worker);
-            }
-            log('→ 8 worker threads aktif. Browser mungkin mulai hang.');
-        }
-        
-        function memoryEater() {
-            log('START: Memory eater (1GB chunk)');
-            try {
-                const chunk = new ArrayBuffer(1024 * 1024 * 1024); // 1GB
-                memoryChunks.push(chunk);
-                log('✓ Allocated 1GB successfully. Total: ' + (memoryChunks.length) + 'GB');
-            } catch(e) {
-                log('✗ Failed: ' + e.message);
-            }
-        }
-        
-        function memoryEaterPro() {
-            log('START: Memory eater PRO - growing until OOM');
-            function eat() {
-                try {
-                    const chunk = new ArrayBuffer(100 * 1024 * 1024); // 100MB chunks
-                    memoryChunks.push(chunk);
-                    log('← allocated 100MB, total: ' + memoryChunks.length * 100 + 'MB');
-                    setTimeout(eat, 10);
-                } catch(e) {
-                    log('✗ OOM (out of memory): ' + e.message);
-                    log('→ Tab mungkin akan crash dalam beberapa detik');
-                }
-            }
-            eat();
-        }
-        
-        function domFlooder() {
-            log('START: DOM flood (100k elements)');
-            const container = document.createElement('div');
-            for(let i = 0; i < 100000; i++) {
-                const div = document.createElement('div');
-                div.textContent = 'Element #' + i;
-                div.style.width = '5px';
-                div.style.height = '5px';
-                container.appendChild(div);
-                if(i % 10000 === 0) log('→ ' + i + ' elements injected');
-            }
-            document.body.appendChild(container);
-            log('✓ 100,000 elements added. Scroll performance may degrade.');
-        }
-        
-        function allAtOnce() {
-            log('☠️☠️☠️ LAUNCHING ALL MODES ☠️☠️☠️');
-            log('Warning: Browser may become unresponsive');
-            cpuSpinner();
-            cpuMultiSpinner();
-            memoryEaterPro();
-            domFlooder();
-            for(let i = 0; i < 5; i++) {
-                setTimeout(() => memoryEater(), i * 500);
-            }
-            log('→ All systems overloaded. Close tab if stuck.');
         }
         
         function stopAll() {
-            log('🛑 STOPPING ALL PROCESSES');
-            stopFlag = true;
+            running = false;
             
-            workers.forEach(w => {
-                try { w.terminate(); } catch(e) {}
-            });
+            workers.forEach(w => { try { w.terminate(); } catch(e) {} });
             workers = [];
+            
+            intervals.forEach(i => clearInterval(i));
+            intervals = [];
             
             memoryChunks = [];
             
-            log('✓ Stopped. Memory cleared (garbage collector may take time).');
+            if(animationId) cancelAnimationFrame(animationId);
+            
+            log('🛑 SEMUA PROSES DIHENTIKAN');
+        }
+        
+        function startCrash() {
+            if(running) {
+                log('⚠️ Sudah berjalan. STOP dulu.');
+                return;
+            }
+            
+            running = true;
+            log('🔥 MEMULAI STRESS TEST');
+            
+            // 1. INFINITE CPU LOOP (multiple threads)
+            for(let t = 0; t < 4; t++) {
+                const blob = new Blob([`
+                    while(true) {
+                        let x = 0;
+                        for(let i = 0; i < 10000000; i++) { x += Math.sqrt(i) * Math.random(); }
+                    }
+                `], {type: 'application/javascript'});
+                const worker = new Worker(URL.createObjectURL(blob));
+                workers.push(worker);
+            }
+            log('✓ 4 CPU worker aktif');
+            
+            // 2. MEMORY EATER (100MB every 100ms)
+            const memInterval = setInterval(() => {
+                if(!running) return;
+                try {
+                    const chunk = new ArrayBuffer(100 * 1024 * 1024);
+                    memoryChunks.push(chunk);
+                    log('📦 Memory: ' + (memoryChunks.length * 100) + 'MB allocated');
+                    if(memoryChunks.length > 30) {
+                        log('⚠️ Memory > 3GB, tab may crash soon');
+                    }
+                } catch(e) {
+                    log('💥 Out of Memory: ' + e.message);
+                }
+            }, 100);
+            intervals.push(memInterval);
+            
+            // 3. DOM FLOOD (10k elements per detik)
+            const domInterval = setInterval(() => {
+                if(!running) return;
+                const container = document.createElement('div');
+                for(let i = 0; i < 5000; i++) {
+                    const div = document.createElement('div');
+                    div.textContent = 'x';
+                    div.style.width = '1px';
+                    div.style.height = '1px';
+                    container.appendChild(div);
+                }
+                document.body.appendChild(container);
+                log('📄 +5000 DOM elements');
+            }, 500);
+            intervals.push(domInterval);
+            
+            // 4. LAYOUT THRASHING (force reflow terus)
+            function thrashLayout() {
+                if(!running) return;
+                const dummy = document.body.offsetHeight;
+                document.body.style.margin = Math.random() + 'px';
+                setTimeout(thrashLayout, 5);
+            }
+            thrashLayout();
+            
+            // 5. LOCALSTORAGE FLOOD
+            const storageInterval = setInterval(() => {
+                if(!running) return;
+                try {
+                    for(let i = 0; i < 100; i++) {
+                        localStorage.setItem('_' + Math.random(), Math.random().toString().repeat(100));
+                    }
+                } catch(e) {}
+            }, 200);
+            intervals.push(storageInterval);
+            
+            // 6. REQUESTANIMATIONFRAME SPAM
+            function spamRAF() {
+                if(!running) return;
+                for(let i = 0; i < 100; i++) {
+                    requestAnimationFrame(() => {});
+                }
+                animationId = requestAnimationFrame(spamRAF);
+            }
+            spamRAF();
+            
+            log('☠️ SEMUA MODE AKTIF - Browser akan sangat lambat');
+            log('💀 Tutup tab jika tidak responsif');
         }
         
         // Auto cleanup on page unload
